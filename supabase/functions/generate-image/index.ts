@@ -58,12 +58,8 @@ Deno.serve(async (req) => {
 
   const fullPrompt = `${spec.hint}. ${prompt}`;
 
-  // Gemini image models on the Lovable AI Gateway use the OpenRouter
-  // chat-completions image shape: messages + modalities. No `prompt`, no
-  // `quality`, no `partial_images` — Gemini emits partial frames natively
-  // when stream is true. The Gateway normalizes the SSE events into the
-  // OpenAI `image_generation.partial_image` / `image_generation.completed`
-  // shape the client already parses.
+  // Keep the original OpenAI image-generation request contract used by the
+  // app's existing Lovable AI Gateway routes.
   let upstream: Response;
   try {
     upstream = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
@@ -73,10 +69,13 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3.1-flash-image",
-        messages: [{ role: "user", content: fullPrompt }],
-        modalities: ["image", "text"],
+        model: "openai/gpt-image-2",
+        prompt: fullPrompt,
+        size: spec.size,
+        quality: "low",
+        n: 1,
         stream: true,
+        partial_images: 2,
       }),
     });
   } catch (err) {
